@@ -5,7 +5,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/tangxusc/cqrs-sidecar/pkg/config"
+	"github.com/tangxusc/cqrs-sidecar/pkg/db"
 	"github.com/tangxusc/cqrs-sidecar/pkg/event"
+	"github.com/tangxusc/cqrs-sidecar/pkg/rpc"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -19,10 +21,15 @@ func NewCommand(ctx context.Context) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			rand.Seed(time.Now().Unix())
 			config.InitLog()
+
+			db.InitConn(ctx)
+			defer db.CloseConn()
 			//1,启动消息监听
 			go event.StartConsumer(ctx)
 			defer event.StopConsumer()
 			//2,启动grpc
+			rpc.Start(ctx)
+			defer rpc.Close()
 			//3,metrics
 
 			<-ctx.Done()

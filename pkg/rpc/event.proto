@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+package rpc;
+
+service Consumer {
+    rpc Consume (ConsumeRequest) returns (stream ConsumeResponse) {
+
+    }
+}
+message ConsumeRequest {
+}
+//事件的详细信息
+message ConsumeResponse {
+    //事件id
+    string id = 1;
+    //事件类型
+    string eventType = 2;
+    //聚合id
+    string aggId = 3;
+    //聚合类型
+    string aggType = 4;
+    //事件创建时间
+    google.protobuf.Timestamp create = 5;
+    //事件内容
+    string data = 6;
+}

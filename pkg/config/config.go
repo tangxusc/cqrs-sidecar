@@ -32,18 +32,25 @@ func BindParameter(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&Instance.Pulsar.Url, "pulsar-url", "", "pulsar://localhost:6650", "pulsar消息中间件地址")
 	cmd.PersistentFlags().StringVarP(&Instance.Pulsar.TopicName, "pulsar-topic-name", "", "cqrs-db", "pulsar消息中间件主题名称")
 
+	cmd.PersistentFlags().StringVarP(&Instance.Rpc.Port, "rpc-port", "", "9999", "rpc端口")
+}
+
+type RpcConfig struct {
+	Port string
 }
 
 type Config struct {
 	Debug  bool
 	Db     *DbConfig
 	Pulsar *PulsarConfig
+	Rpc    *RpcConfig
 }
 
 var Instance = &Config{
 	Debug:  true,
 	Db:     &DbConfig{},
 	Pulsar: &PulsarConfig{},
+	Rpc:    &RpcConfig{},
 }
 
 type PulsarConfig struct {

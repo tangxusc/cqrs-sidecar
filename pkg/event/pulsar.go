@@ -2,11 +2,14 @@ package event
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/apache/pulsar/pulsar-client-go/pulsar"
+	"github.com/sirupsen/logrus"
 	"github.com/tangxusc/cqrs-sidecar/pkg/config"
-	"log"
+	"github.com/tangxusc/cqrs-sidecar/pkg/db"
 	"os"
 	"runtime"
+	"time"
 )
 
 type PulsarProvider struct {
@@ -43,10 +46,12 @@ func (p *PulsarConsumer) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	duration := time.Second * 2
 	consumer, err := client.Subscribe(pulsar.ConsumerOptions{
-		Topic:            config.Instance.Pulsar.TopicName,
-		SubscriptionName: name,
-		Type:             pulsar.KeyShared,
+		Topic:               config.Instance.Pulsar.TopicName,
+		SubscriptionName:    name,
+		Type:                pulsar.KeyShared,
+		NackRedeliveryDelay: &duration,
 	})
 	if err != nil {
 		return err
@@ -73,20 +78,44 @@ func (p *PulsarConsumer) Stop() error {
 
 func (p *PulsarConsumer) listen(ctx context.Context) {
 	for {
-		msg, err := p.consumer.Receive(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		//1,存储到db
-		//2,grpc 推送
-		//3,ack
-		err = processMessage(msg)
-
-		if err == nil {
-			p.consumer.Ack(msg)
-		} else {
-			p.consumer.Nack(msg)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			msg, err := p.consumer.Receive(ctx)
+			if err != nil {
+				logrus.Errorf("[event]接收消息出现错误:%v", err)
+				continue
+			}
+			data, err := unmarshal(msg)
+			if err != nil {
+				logrus.Errorf("[event]反序列化消息出现错误:%v", err)
+				continue
+			}
+			//1,存储到db
+			err = db.ConnInstance.Save(data)
+			if err != nil {
+				//错误处理
+				err = p.consumer.Nack(msg)
+				if err != nil {
+					logrus.Errorf("[event]Nack出现错误:%v", err)
+				}
+				continue
+			} else {
+				err = p.consumer.Ack(msg)
+				if err != nil {
+					logrus.Errorf("[event]Nack出现错误:%v", err)
+					continue
+				}
+			}
+			//2,grpc 推送
+			SenderImpl.SendEvent(ctx, data, msg.Key())
 		}
 	}
+}
+
+func unmarshal(message pulsar.Message) (Event, error) {
+	impl := &Impl{}
+	e := json.Unmarshal(message.Payload(), impl)
+	return impl, e
 }

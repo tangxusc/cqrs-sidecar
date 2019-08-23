@@ -66,6 +66,12 @@ type Consumer interface {
 
 var ConsumerImpl Consumer
 
+type Sender interface {
+	SendEvent(ctx context.Context, e Event, key string)
+}
+
+var SenderImpl Sender
+
 func StartConsumer(ctx context.Context) {
 	ConsumerImpl = GetConsumerImpl()
 	if ConsumerImpl == nil {
