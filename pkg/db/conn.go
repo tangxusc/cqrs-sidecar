@@ -141,6 +141,47 @@ func (conn *Conn) Query(query string, newRow func(types []*sql.ColumnType) []int
 	return nil
 }
 
+func (conn *Conn) Proxy(query string) (columnNames []string, columnValues [][]interface{}, err error) {
+	logrus.Debugf("[proxy]Proxy:%s", query)
+	var temp interface{} = ""
+	var rowOrigin []interface{}
+	var result []interface{}
+
+	columnValues = make([][]interface{}, 0)
+	err = conn.Query(query,
+		func(types []*sql.ColumnType) []interface{} {
+			if result == nil {
+				result = make([]interface{}, len(types))
+				rowOrigin = make([]interface{}, 0, len(types))
+				for key := range types {
+					rowOrigin = append(rowOrigin, temp)
+					result[key] = &rowOrigin[key]
+				}
+			}
+			return result
+		},
+		func(row []interface{}) {
+			i := make([]interface{}, len(row))
+			for key := range row {
+				v1 := rowOrigin[key]
+				switch v1.(type) {
+				case time.Time:
+					i[key] = v1.(time.Time).String()
+					continue
+				}
+				i[key] = rowOrigin[key]
+			}
+			columnValues = append(columnValues, i)
+		},
+		func(strings []string) {
+			columnNames = strings
+		})
+	if err != nil {
+		return
+	}
+	return
+}
+
 /*
 TODO:保存事件
 根据id查询,如果存在,则ack

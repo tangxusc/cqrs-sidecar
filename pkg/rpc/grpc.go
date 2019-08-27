@@ -80,6 +80,7 @@ func (g *grpcSender) SendEvent(ctx context.Context, e event.Event, key string) {
 }
 
 func (g *grpcSender) send(stream Consumer_ConsumeServer, response *ConsumeResponse) {
+	//TODO:在发送时check数据,确认是否已经ack
 	for {
 		if err := stream.Send(response); err == nil {
 			return

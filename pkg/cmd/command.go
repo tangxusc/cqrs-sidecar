@@ -7,6 +7,7 @@ import (
 	"github.com/tangxusc/cqrs-sidecar/pkg/config"
 	"github.com/tangxusc/cqrs-sidecar/pkg/db"
 	"github.com/tangxusc/cqrs-sidecar/pkg/event"
+	"github.com/tangxusc/cqrs-sidecar/pkg/proxy"
 	"github.com/tangxusc/cqrs-sidecar/pkg/rpc"
 	"math/rand"
 	"os"
@@ -24,6 +25,8 @@ func NewCommand(ctx context.Context) *cobra.Command {
 
 			db.InitConn(ctx)
 			defer db.CloseConn()
+
+			go proxy.Start(ctx)
 			//1,启动消息监听
 			go event.StartConsumer(ctx)
 			defer event.StopConsumer()
