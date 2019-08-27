@@ -17,11 +17,6 @@ type aggSender struct {
 	sender    *grpcSender
 }
 
-func (sender *aggSender) send(ctx context.Context, e event.Event) {
-	//顺序发送...
-	sender.eventChan <- e
-}
-
 func (sender *aggSender) start(ctx context.Context) {
 	go func() {
 		for {
@@ -81,7 +76,7 @@ func (g *grpcSender) SendEvent(ctx context.Context, e event.Event, key string) {
 		newSender.start(ctx)
 		sender = newSender
 	}
-	sender.send(ctx, e)
+	sender.eventChan <- e
 }
 
 func (g *grpcSender) send(stream Consumer_ConsumeServer, response *ConsumeResponse) {
