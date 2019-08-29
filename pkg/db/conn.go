@@ -7,7 +7,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/sirupsen/logrus"
 	"github.com/tangxusc/cqrs-sidecar/pkg/config"
-	"github.com/tangxusc/cqrs-sidecar/pkg/event"
 	"os"
 	"time"
 )
@@ -38,6 +37,17 @@ func CloseConn() {
 		ConnInstance.Close()
 		ConnInstance = nil
 	}
+}
+
+func (conn *Conn) ExecWithTx(tx *sql.Tx, sqlString string, param ...interface{}) error {
+	logrus.Debugf("[proxy]Exec:%s,param:%v", sqlString, param)
+	stmt, e := tx.Prepare(sqlString)
+	if e != nil {
+		return e
+	}
+	defer stmt.Close()
+	_, e = stmt.Exec(param...)
+	return e
 }
 
 func (conn *Conn) Exec(sqlString string, param ...interface{}) error {
@@ -183,12 +193,39 @@ func (conn *Conn) Proxy(query string) (columnNames []string, columnValues [][]in
 }
 
 /*
-TODO:保存事件
+保存事件
 根据id查询,如果存在,则ack
 如果不存在则插入,然后ack
-如果插入出现主键冲突,则重试
 */
-func (conn *Conn) Save(event event.Event) error {
-
+func (conn *Conn) Save(Id string, EventType string, AggId string, AggType string, CreateTime time.Time, Data string, status string) error {
+	tx, e := ConnInstance.DB.Begin()
+	if e != nil {
+		return e
+	}
+	result, e := tx.Query(`select count(1) c from event where id =? `, Id)
+	if e != nil {
+		_ = tx.Commit()
+		return e
+	}
+	defer result.Close()
+	var count int
+	e = result.Scan(&count)
+	if e != nil {
+		return e
+	}
+	//已存在event
+	if count > 0 {
+		return nil
+	}
+	e = ConnInstance.ExecWithTx(tx, `insert into event(id,type,agg_id,agg_type,create_time,data,status) values(?,?,?,?,?,?,?)`,
+		Id, EventType, AggId, AggType, CreateTime, Data, status)
+	if e != nil {
+		r := tx.Rollback()
+		if r != nil {
+			return fmt.Errorf(`%v,%v`, e, r)
+		} else {
+			return e
+		}
+	}
 	return nil
 }

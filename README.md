@@ -14,8 +14,9 @@ cqrs的目标是在各种语言中实现:
 
 - [x] pulsar接入(key_share订阅)
 - [x] rpc推送event
-- [ ] proxy代理查询数据库
-- [ ] 存储过程实现ack event
+- [x] proxy代理查询数据库
+- [x] 存储过程实现ack event
+- [ ] 重启后恢复推送未发送的event
 - [ ] metrics实现
 - [ ] grpc推送时如何不重复?
 - [ ] opentracing接入

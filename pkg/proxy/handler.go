@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/siddontang/go-mysql/mysql"
 	"github.com/siddontang/go-mysql/server"
@@ -20,9 +21,8 @@ func NewHandler() server.Handler {
 }
 
 type ConnHandler struct {
-	TxBegin bool
-	TxKey   string
-	Conn    *server.Conn
+	Conn *server.Conn
+	Tx   *sql.Tx
 }
 
 func (t *ConnHandler) UseDB(dbName string) error {

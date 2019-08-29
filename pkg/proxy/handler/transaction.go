@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/siddontang/go-mysql/mysql"
+	"github.com/tangxusc/cqrs-sidecar/pkg/db"
 	"github.com/tangxusc/cqrs-sidecar/pkg/proxy"
 	"strings"
 )
@@ -15,7 +17,7 @@ type transaction struct {
 
 func (s *transaction) Match(sql string) bool {
 	space := strings.TrimSpace(sql)
-	if space == `begin` || space == `commit` || space == `rollback` {
+	if space == `begin` || space == `commit` || space == `rollback` || space == `start transaction` {
 		return true
 	}
 
@@ -23,9 +25,26 @@ func (s *transaction) Match(sql string) bool {
 }
 
 func (s *transaction) Handler(query string, handler *proxy.ConnHandler) (*mysql.Result, error) {
-	//TODO:事务处理
-	//开启事务 handler.tx=tx,开启事务后,ack直接使用这个tx
-	//回滚事务 handler.tx.rollback()
-	//提交事务 handler.tx.commit()
+	switch query {
+	case `begin`, `start transaction`:
+		tx, e := db.ConnInstance.Begin()
+		if e != nil {
+			return nil, e
+		}
+		handler.Tx = tx
+	case `commit`:
+		if handler.Tx == nil {
+			return nil, fmt.Errorf(`需要先开启事务,才能提交事务`)
+		}
+		e := handler.Tx.Commit()
+		//TODO:提交事务后发送消息
+		return nil, e
+	case `rollback`:
+		if handler.Tx == nil {
+			return nil, fmt.Errorf(`需要先开启事务,才能回滚事务`)
+		}
+		e := handler.Tx.Rollback()
+		return nil, e
+	}
 	return nil, nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/sirupsen/logrus"
+	"github.com/tangxusc/cqrs-sidecar/pkg/db"
 	"os"
 	"time"
 )
@@ -59,18 +60,12 @@ type Event interface {
 	ToJson() ([]byte, error)
 }
 
+var ConsumerImpl Consumer
+
 type Consumer interface {
 	Start(ctx context.Context) error
 	Stop() error
 }
-
-var ConsumerImpl Consumer
-
-type Sender interface {
-	SendEvent(ctx context.Context, e Event, key string)
-}
-
-var SenderImpl Sender
 
 func StartConsumer(ctx context.Context) {
 	ConsumerImpl = GetConsumerImpl()
@@ -90,4 +85,27 @@ func StopConsumer() {
 	if e != nil {
 		logrus.Errorf("[event]关闭消息中间件连接出现错误,错误:%v", e.Error())
 	}
+}
+
+var SenderImpl Sender
+
+type Sender interface {
+	SendEvent(ctx context.Context, e Event, key string)
+}
+
+var Confirmed = `Confirmed`
+var NotConfirmed = `NotConfirmed`
+
+/*
+处理事件
+*/
+func ProcessEvent(ctx context.Context, eve Event, key string) error {
+	//1,存储到db
+	e := db.ConnInstance.Save(eve.Id(), eve.EventType(), eve.AggId(), eve.AggType(), eve.CreateTime(), eve.Data(), NotConfirmed)
+	if e != nil {
+		return e
+	}
+	//2,grpc 推送
+	go SenderImpl.SendEvent(ctx, eve, key)
+	return e
 }

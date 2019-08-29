@@ -6,7 +6,6 @@ import (
 	"github.com/apache/pulsar/pulsar-client-go/pulsar"
 	"github.com/sirupsen/logrus"
 	"github.com/tangxusc/cqrs-sidecar/pkg/config"
-	"github.com/tangxusc/cqrs-sidecar/pkg/db"
 	"os"
 	"runtime"
 	"time"
@@ -92,8 +91,8 @@ func (p *PulsarConsumer) listen(ctx context.Context) {
 				logrus.Errorf("[event]反序列化消息出现错误:%v", err)
 				continue
 			}
-			//1,存储到db
-			err = db.ConnInstance.Save(data)
+			err = ProcessEvent(ctx, data, msg.Key())
+
 			if err != nil {
 				//错误处理
 				err = p.consumer.Nack(msg)
@@ -108,8 +107,6 @@ func (p *PulsarConsumer) listen(ctx context.Context) {
 					continue
 				}
 			}
-			//2,grpc 推送
-			SenderImpl.SendEvent(ctx, data, msg.Key())
 		}
 	}
 }
