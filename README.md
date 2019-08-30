@@ -16,7 +16,7 @@ cqrs的目标是在各种语言中实现:
 - [x] rpc推送event
 - [x] proxy代理查询数据库
 - [x] 存储过程实现ack event
-- [ ] 重启后恢复推送未发送的event
+- [x] 重启后恢复推送未发送的event
 - [ ] metrics实现
 - [ ] grpc推送时如何不重复?
 - [ ] opentracing接入

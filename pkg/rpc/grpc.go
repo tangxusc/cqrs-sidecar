@@ -13,8 +13,9 @@ import (
 )
 
 type aggSender struct {
-	eventChan chan event.Event
-	sender    *grpcSender
+	eventChan   chan event.Event
+	recoverChan chan event.Event
+	sender      *grpcSender
 }
 
 func (sender *aggSender) start(ctx context.Context) {
@@ -23,6 +24,8 @@ func (sender *aggSender) start(ctx context.Context) {
 			select {
 			case <-ctx.Done():
 				return
+			case e := <-sender.recoverChan:
+				sender.sender.bufChan <- e
 			case e := <-sender.eventChan:
 				sender.sender.bufChan <- e
 			}
@@ -45,7 +48,6 @@ func (g *grpcSender) Consume(request *ConsumeRequest, stream Consumer_ConsumeSer
 			response := convert(e)
 			//如何处理事务,避免重复发送?
 			g.send(stream, response)
-			//TODO:更新数据库
 		}
 	}
 }
@@ -66,17 +68,27 @@ func convert(e event.Event) *ConsumeResponse {
 }
 
 func (g *grpcSender) SendEvent(ctx context.Context, e event.Event, key string) {
+	sender := g.getSender(key, ctx)
+	sender.eventChan <- e
+}
+func (g *grpcSender) SendRecoverEvent(ctx context.Context, e event.Event, key string) {
+	sender := g.getSender(key, ctx)
+	sender.recoverChan <- e
+}
+
+func (g *grpcSender) getSender(key string, ctx context.Context) *aggSender {
 	sender, ok := g.aggSenders[key]
 	if !ok {
 		newSender := &aggSender{
-			eventChan: make(chan event.Event),
-			sender:    g,
+			eventChan:   make(chan event.Event, 10),
+			recoverChan: make(chan event.Event, 10),
+			sender:      g,
 		}
 		g.aggSenders[key] = newSender
 		newSender.start(ctx)
 		sender = newSender
 	}
-	sender.eventChan <- e
+	return sender
 }
 
 func (g *grpcSender) send(stream Consumer_ConsumeServer, response *ConsumeResponse) {
@@ -93,7 +105,10 @@ var server *grpc.Server
 //go:generate protoc --go_out=plugins=grpc:. event.proto
 
 func Start(ctx context.Context) {
-	sender := &grpcSender{aggSenders: make(map[string]*aggSender)}
+	sender := &grpcSender{
+		aggSenders: make(map[string]*aggSender),
+		bufChan:    make(chan event.Event, 100),
+	}
 	event.SenderImpl = sender
 	go func() {
 		listener, e := net.Listen("tcp", fmt.Sprintf(":%s", config.Instance.Rpc.Port))

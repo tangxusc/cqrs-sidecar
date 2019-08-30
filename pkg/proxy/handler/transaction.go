@@ -37,7 +37,6 @@ func (s *transaction) Handler(query string, handler *proxy.ConnHandler) (*mysql.
 			return nil, fmt.Errorf(`需要先开启事务,才能提交事务`)
 		}
 		e := handler.Tx.Commit()
-		//TODO:提交事务后发送消息
 		return nil, e
 	case `rollback`:
 		if handler.Tx == nil {

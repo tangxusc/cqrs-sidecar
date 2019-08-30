@@ -2,7 +2,9 @@ package event
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/tangxusc/cqrs-sidecar/pkg/db"
 	"os"
@@ -77,7 +79,34 @@ func StartConsumer(ctx context.Context) {
 	if e != nil {
 		logrus.Errorf("[event]连接消息中间件出现错误,错误:%v", e.Error())
 		os.Exit(1)
+		return
 	}
+	e = recoveryEvent(ctx)
+	if e != nil {
+		logrus.Errorf("[event]恢复未发送消息出现错误,错误:%v", e.Error())
+		os.Exit(1)
+		return
+	}
+}
+
+func recoveryEvent(ctx context.Context) error {
+	impls := make([]*Impl, 0)
+	e := db.ConnInstance.QueryList(`select id,event_type,agg_id,agg_type,create_time,data from event where status=? order by create_time desc`, func(types []*sql.ColumnType) []interface{} {
+		impl := &Impl{}
+		impls = append(impls, impl)
+		return []interface{}{&impl.ImplId, &impl.ImplEventType, &impl.ImplAggId, &impl.ImplAggType, &impl.ImplCreateTime, &impl.ImplData}
+	}, NotConfirmed)
+	if e != nil {
+		return e
+	}
+	for _, v := range impls {
+		SenderImpl.SendRecoverEvent(ctx, v, getKey(v))
+	}
+	return nil
+}
+
+func getKey(event Event) string {
+	return fmt.Sprintf("%s:%s", event.AggType(), event.AggId())
 }
 
 func StopConsumer() {
@@ -91,6 +120,7 @@ var SenderImpl Sender
 
 type Sender interface {
 	SendEvent(ctx context.Context, e Event, key string)
+	SendRecoverEvent(ctx context.Context, e Event, key string)
 }
 
 var Confirmed = `Confirmed`

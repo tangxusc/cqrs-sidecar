@@ -37,7 +37,6 @@ func (s *ackEvent) Handler(query string, handler *proxy.ConnHandler) (*mysql.Res
 	if len(strings.TrimSpace(eventId)) <= 0 {
 		return nil, fmt.Errorf(`eventId不能为空`)
 	}
-	//TODO:更新表
 	e := db.ConnInstance.ExecWithTx(handler.Tx, `update event set status = ? where id= ? and status= ? `, event.Confirmed, eventId, event.NotConfirmed)
 	return nil, e
 }

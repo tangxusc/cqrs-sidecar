@@ -217,7 +217,7 @@ func (conn *Conn) Save(Id string, EventType string, AggId string, AggType string
 	if count > 0 {
 		return nil
 	}
-	e = ConnInstance.ExecWithTx(tx, `insert into event(id,type,agg_id,agg_type,create_time,data,status) values(?,?,?,?,?,?,?)`,
+	e = ConnInstance.ExecWithTx(tx, `insert into event(id,event_type,agg_id,agg_type,create_time,data,status) values(?,?,?,?,?,?,?)`,
 		Id, EventType, AggId, AggType, CreateTime, Data, status)
 	if e != nil {
 		r := tx.Rollback()

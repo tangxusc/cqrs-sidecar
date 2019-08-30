@@ -27,12 +27,12 @@ func NewCommand(ctx context.Context) *cobra.Command {
 			defer db.CloseConn()
 
 			go proxy.Start(ctx)
-			//1,启动消息监听
-			go event.StartConsumer(ctx)
-			defer event.StopConsumer()
 			//2,启动grpc
 			rpc.Start(ctx)
 			defer rpc.Close()
+			//1,启动消息监听
+			go event.StartConsumer(ctx)
+			defer event.StopConsumer()
 			//3,metrics
 
 			<-ctx.Done()
