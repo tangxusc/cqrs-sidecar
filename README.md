@@ -25,6 +25,25 @@ cqrs的目标是在各种语言中实现:
 
 ![](./document/img_1.png)
 
+## 使用方式
+
+- 确认消息(ack event)
+
+  ```sql
+  begin;
+  call ack('123');
+  commit;
+  ```
+
+  通过mysql的存储过程实现ack event
+
+- 获取event
+  
+  ```shell
+  #生成event的proto
+  $ protoc --go_out=plugins=grpc:. event.proto
+  ```
+
 ## 参照
 
 ```shell
