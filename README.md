@@ -22,8 +22,10 @@ cqrs的目标是在各种语言中实现:
 - [ ] opentracing接入
 
 ## 架构
-
+整体架构:
 ![](./document/img_1.png)
+sidecar内部架构:
+![](./document/img_2.png)
 
 ## 使用方式
 
