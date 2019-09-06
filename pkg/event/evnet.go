@@ -136,6 +136,6 @@ func ProcessEvent(ctx context.Context, eve Event, key string) error {
 		return e
 	}
 	//2,grpc 推送
-	go SenderImpl.SendEvent(ctx, eve, key)
+	SenderImpl.SendEvent(ctx, eve, key)
 	return e
 }
