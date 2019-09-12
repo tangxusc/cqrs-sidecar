@@ -12,7 +12,7 @@ import (
 
 func init() {
 	variables := &ackEvent{}
-	compile, e := regexp.Compile(`(?i).*\s*call ack\('(.+)'\)$`)
+	compile, e := regexp.Compile(`(?i).*\s*call ack\(\'(.+)\'\)$`)
 	if e != nil {
 		panic(e.Error())
 	}
@@ -29,8 +29,8 @@ func (s *ackEvent) Match(sql string) bool {
 }
 
 func (s *ackEvent) Handler(query string, handler *proxy.ConnHandler) (*mysql.Result, error) {
-	allString := s.compile.FindAllString(query, -1)
-	eventId := allString[1]
+	allString := s.compile.FindAllStringSubmatch(query, -1)
+	eventId := allString[0][1]
 	if handler.Tx == nil {
 		return nil, fmt.Errorf(`请开启事务再进行ack`)
 	}

@@ -202,19 +202,16 @@ func (conn *Conn) Save(Id string, EventType string, AggId string, AggType string
 	if e != nil {
 		return e
 	}
-	result, e := tx.Query(`select count(1) c from event where id =? `, Id)
+	result := tx.QueryRow(`select count(1) c from event where id =? `, Id)
+	var count int
+	e = result.Scan(&count)
 	if e != nil {
 		_ = tx.Commit()
 		return e
 	}
-	defer result.Close()
-	var count int
-	e = result.Scan(&count)
-	if e != nil {
-		return e
-	}
 	//已存在event
 	if count > 0 {
+		_ = tx.Commit()
 		return nil
 	}
 	e = ConnInstance.ExecWithTx(tx, `insert into event(id,event_type,agg_id,agg_type,create_time,data,status) values(?,?,?,?,?,?,?)`,
@@ -227,5 +224,6 @@ func (conn *Conn) Save(Id string, EventType string, AggId string, AggType string
 			return e
 		}
 	}
-	return nil
+	e = tx.Commit()
+	return e
 }

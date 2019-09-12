@@ -17,6 +17,7 @@ type transaction struct {
 
 func (s *transaction) Match(sql string) bool {
 	space := strings.TrimSpace(sql)
+	space = strings.ToLower(space)
 	if space == `begin` || space == `commit` || space == `rollback` || space == `start transaction` {
 		return true
 	}
@@ -25,6 +26,8 @@ func (s *transaction) Match(sql string) bool {
 }
 
 func (s *transaction) Handler(query string, handler *proxy.ConnHandler) (*mysql.Result, error) {
+	query = strings.TrimSpace(query)
+	query = strings.ToLower(query)
 	switch query {
 	case `begin`, `start transaction`:
 		tx, e := db.ConnInstance.Begin()
